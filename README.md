@@ -1,20 +1,111 @@
 # MediTrack
 
-Hospital management dashboard (blue dashboard UI with specialist cards, billing chart and schedule): Next.js (React) UI and API routes on Vercel, Neon PostgreSQL database.
-Tables: Patients, Doctors, Appointments, Prescriptions, Billing (sample data is fictional).
+MediTrack is a hospital management database project built with **MySQL**. It stores and connects patient records, doctor details, appointments, prescriptions, and billing records using relational tables, primary keys, and foreign keys.
 
-## Run locally
-1. In PowerShell, go to the folder that contains `package.json`: `cd C:\Users\buzin\Downloads\meditrack\meditrack`
-2. Run `npm install`
-3. Run `npm run dev` and open the local URL printed in the terminal (usually http://localhost:3000; if that port is busy, Next.js may use http://localhost:3001). With no `DATABASE_URL`, the app uses the read-only fictional sample-data demo.
-4. To connect Neon, install the Neon CLI with `npm install -g neon@latest`, sign in using `neon login`, and link the project and branch with `neon link`. `neon deploy` applies the `neon.ts` policy and pulls the pooled app connection string into `.env.local`.
-5. Run `npm run db:seed` to create the tables and load fictional sample records, then restart `npm run dev`. The seed script uses `DATABASE_URL_UNPOOLED` for direct database access when available. Seeding drops and recreates the five tables.
+## Entity Relationship Diagram
 
-Keep `.env.local` private; do not commit or share the database URL. If `DATABASE_URL` is unset, the app uses the read-only demo data.
+```mermaid
+erDiagram
+    PATIENTS ||--o{ APPOINTMENTS : has
+    DOCTORS ||--o{ APPOINTMENTS : attends
+    APPOINTMENTS ||--o{ PRESCRIPTIONS : results_in
+    APPOINTMENTS ||--o{ BILLING : generates
 
-## Deploy on Vercel
-1. Create a Neon project and run `npm run db:seed` with its pooled connection string in `DATABASE_URL`. In Vercel, add the same value under Project Settings > Environment Variables. Without `DATABASE_URL`, the app uses fictional read-only demo data.
-2. In Vercel, set the project's **Root Directory** to `meditrack` (the folder containing `package.json` and `app/`). The Git repository is one directory above the Next.js app.
-3. Use `npm run build` as the Build Command and leave the Output Directory setting at its default.
-4. Add `DATABASE_URL` in Project Settings > Environment Variables, then redeploy.
-5. Keep `ALLOW_WRITES=false` on the public site (read-only). Set it to `true` only to demo booking.
+    PATIENTS {
+        INT Patient_ID PK
+        VARCHAR Name
+        INT Age
+        VARCHAR Gender
+        VARCHAR Contact
+        VARCHAR Email
+        VARCHAR Address
+    }
+    DOCTORS {
+        INT Doctor_ID PK
+        VARCHAR Name
+        VARCHAR Specialization
+        DECIMAL Fee
+        INT Experience_Years
+    }
+    APPOINTMENTS {
+        INT Appointment_ID PK
+        INT Patient_ID FK
+        INT Doctor_ID FK
+        DATE Appointment_Date
+        VARCHAR Status
+    }
+    PRESCRIPTIONS {
+        INT Prescription_ID PK
+        INT Appointment_ID FK
+        VARCHAR Medicine
+        VARCHAR Dosage
+        INT Duration_Days
+    }
+    BILLING {
+        INT Bill_ID PK
+        INT Appointment_ID FK
+        DECIMAL Amount
+        VARCHAR Payment_Method
+        VARCHAR Payment_Status
+    }
+```
+
+## Entities and Attributes
+
+| Entity | Attributes |
+|---|---|
+| **Patients** | `Patient_ID` (PK), `Name`, `Age`, `Gender`, `Contact`, `Email`, `Address` |
+| **Doctors** | `Doctor_ID` (PK), `Name`, `Specialization`, `Fee`, `Experience_Years` |
+| **Appointments** | `Appointment_ID` (PK), `Patient_ID` (FK), `Doctor_ID` (FK), `Appointment_Date`, `Status` |
+| **Prescriptions** | `Prescription_ID` (PK), `Appointment_ID` (FK), `Medicine`, `Dosage`, `Duration_Days` |
+| **Billing** | `Bill_ID` (PK), `Appointment_ID` (FK), `Amount`, `Payment_Method`, `Payment_Status` |
+
+## Key Relationships
+
+| Relationship | Cardinality | Description |
+|---|---:|---|
+| Patients — Appointments | 1:M | A patient can have multiple appointments. Each appointment references one patient. |
+| Doctors — Appointments | 1:M | A doctor can have multiple appointments. Each appointment references one doctor. |
+| Appointments — Prescriptions | 1:M | An appointment can have multiple prescriptions. Each prescription references one appointment. |
+| Appointments — Billing | 1:M | An appointment can have multiple billing records. Each billing record references one appointment. |
+
+## Database Tables
+
+- `Patients`
+- `Doctors`
+- `Appointments`
+- `Prescriptions`
+- `Billing`
+
+## Setup
+
+1. Open MySQL Shell in SQL mode and connect to your MySQL server.
+2. Create or select the database:
+
+   ```sql
+   CREATE DATABASE MediTrack;
+   USE MediTrack;
+   ```
+
+3. Run the `CREATE TABLE` statements in this order so referenced tables exist first: `Patients`, `Doctors`, `Appointments`, `Prescriptions`, `Billing`.
+4. Run the corresponding `INSERT` statements to add records.
+
+## Verify the Data
+
+```sql
+USE MediTrack;
+
+SHOW TABLES;
+SELECT * FROM Patients;
+SELECT * FROM Doctors;
+SELECT * FROM Appointments;
+SELECT * FROM Prescriptions;
+SELECT * FROM Billing;
+```
+
+## Notes
+
+- `PK` means primary key; `FK` means foreign key.
+- The schema uses explicit integer primary keys rather than `AUTO_INCREMENT`.
+- Foreign keys connect appointments to patients and doctors, and connect prescriptions and billing records to appointments.
+
