@@ -109,3 +109,8 @@ SELECT * FROM Billing;
 - The schema uses explicit integer primary keys rather than `AUTO_INCREMENT`.
 - Foreign keys connect appointments to patients and doctors, and connect prescriptions and billing records to appointments.
 
+## Add a patient from the web app
+
+On the **Patients** page, fill in the patient form and select **Add patient**. The app inserts the record into its configured PostgreSQL database and refreshes the patient list. Name, age, and gender are required; phone, email, and address are optional.
+
+The app requires `DATABASE_URL` to point to the PostgreSQL database containing the app's tables and `ALLOW_WRITES=true` to enable writes. Demo mode is read-only. Do not enable writes on a public deployment unless the write endpoints are protected by authentication and authorization.

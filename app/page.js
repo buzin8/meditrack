@@ -243,6 +243,56 @@ function Book({ onDone }) {
   );
 }
 
+function AddPatient({ onDone, demo }) {
+  const [f, setF] = useState({ name: '', age: '', gender: '', contact: '', email: '', address: '' });
+  const [message, setMessage] = useState(null);
+  const [error, setError] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    setMessage(null);
+    setError(false);
+    setSaving(true);
+    try {
+      const r = await fetch('/api/patients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...f, age: Number(f.age) }),
+      });
+      const result = await r.json();
+      if (!r.ok) throw new Error(result.error || 'Could not save the patient.');
+      setF({ name: '', age: '', gender: '', contact: '', email: '', address: '' });
+      setMessage(`${result.patient.Name} added (patient #${result.patient.Patient_ID}).`);
+      await onDone();
+    } catch (e) {
+      setError(true);
+      setMessage(e.message || 'Could not save the patient. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="card patient-form">
+      <h3>Add a patient</h3>
+      {demo && <p className="msg">Demo mode is read-only. Connect the database to save patient records.</p>}
+      <form className="patient-fields" onSubmit={submit}>
+        <label>Name<input className="f" name="name" autoComplete="name" maxLength={100} required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
+        <label>Age<input className="f" name="age" type="number" min="0" max="130" step="1" required value={f.age} onChange={(e) => setF({ ...f, age: e.target.value })} /></label>
+        <label>Gender<select className="f" name="gender" required value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
+          <option value="">Select gender</option><option value="M">Male</option><option value="F">Female</option><option value="Other">Other</option>
+        </select></label>
+        <label>Phone<input className="f" name="contact" type="tel" autoComplete="tel" maxLength={15} value={f.contact} onChange={(e) => setF({ ...f, contact: e.target.value })} /></label>
+        <label>Email<input className="f" name="email" type="email" autoComplete="email" maxLength={100} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
+        <label>Address<input className="f" name="address" autoComplete="street-address" maxLength={100} value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} /></label>
+        <button className="btn" type="submit" disabled={saving || demo}>{saving ? 'Saving…' : 'Add patient'}</button>
+      </form>
+      {message && <p className="msg" role={error ? 'alert' : 'status'}>{message}</p>}
+    </section>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState('Home');
   const [ov, setOv] = useState(null);
@@ -258,6 +308,16 @@ export default function App() {
     setRows(null);
     setErr(null);
     if (tab !== 'Home') load(tab.toLowerCase()).then((j) => setRows(j.rows)).catch((e) => setErr(e.message));
+  };
+
+  const refreshAfterPatientCreated = async () => {
+    try {
+      const [patientData, overview] = await Promise.all([load('patients'), load('overview')]);
+      setRows(patientData.rows);
+      setOv(overview);
+    } catch (e) {
+      setErr(`Patient was saved, but the view could not be refreshed: ${e.message}`);
+    }
   };
 
   useEffect(() => {
@@ -312,7 +372,8 @@ export default function App() {
           {ov.recent.slice(0, 4).map((a) => <div className="sched" key={a.Appointment_ID}><b>{a.Specialization}</b><span>{a.Doctor}</span><span>{day(a.Date, { weekday: 'short', day: 'numeric', month: 'short' })}</span><Pill v={a.Status} /></div>)}
         </>) : !err && <p className="msg">Loading…</p>) : (<>
           <h1 style={{ fontSize: 28 }}>{tab}{spec ? ' · ' + spec : ''}</h1>
-          <p className="sub">{rows?.demo ? 'Demo mode · Sample data. No real patients.' : 'Sample hospital data. No real patients.'}</p>
+          <p className="sub">{rows?.demo ? 'Demo mode · Fictional sample data. Changes are not saved.' : rows ? 'Records from your connected database.' : 'Loading records…'}</p>
+          {tab === 'Patients' && rows && <AddPatient onDone={refreshAfterPatientCreated} demo={rows.demo === true} />}
           {tab === 'Appointments' && <Book onDone={reload} />}
           {!rows && !err && <p className="msg">Loading…</p>}
           {rows && (
